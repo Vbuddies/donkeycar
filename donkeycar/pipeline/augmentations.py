@@ -75,6 +75,137 @@ try:
             augmentation = iaa.Lambda(func_images=_transform_images,
                                       func_keypoints=_transform_keypoints)
             return augmentation
+        
+        @classmethod
+        def segmentation(cls):
+            """Image Augmentation to enact road segmentation"""
+
+
+            def _edge_detection(frame):
+                '''want to identify road boundaries'''
+
+                import numpy as np
+                import cv2
+                from skimage.segmentation import slic
+                import pdb
+
+                # pre defined tools that we don't want to write over every time this runs
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                kernel_dilate = np.ones((4, 4), np.uint8)
+                kernel_erode = np.ones((6, 6), np.uint8)
+                tophalf = np.zeros((50, 160))
+
+                
+                # load image
+                img_arr = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # read in as greyscale
+                img_arr = img_arr[50:]  # cut off top half of picture, eliminates background destractions, smaller image size to improve performance
+                
+                #### strategy ####
+                # want to use edge detection to find lines
+                # use contrasting to better highlight lines
+                # bitwise and 2 different methods of contrasting to find road lines
+                # dilate and erode edges to create mask for original image
+                # stack 0s on top of half image to create full image again
+
+                # first contrast image usually does better with lighter images
+                equ = cv2.equalizeHist(img_arr)
+                img_arr_blur = cv2.blur(equ, (3, 3))
+                edges_blur = cv2.Canny(img_arr_blur, 100, 200)
+
+
+                # second contrast image usually does better with darker images
+                cl1 = clahe.apply(img_arr)
+                edges_cl1 = cv2.Canny(cl1, 100, 200)
+
+
+                # where both contrasts agree is mostly road edge
+                edges_and = cv2.bitwise_and(edges_cl1, edges_blur)
+
+
+                # dilate and erode to eliminate smaller fragments that are likely not road
+                img_dilate_1 = cv2.dilate(edges_and, kernel_dilate, iterations=1)
+                img_erode = cv2.erode(img_dilate_1, kernel_erode, iterations=1)
+                img_dilate_2 = cv2.dilate(img_erode, kernel_dilate, iterations=1)
+
+
+                # put in top of image as all zeros
+                final = np.vstack((tophalf, img_dilate_2))
+
+                final2 = cv2.merge([final, final, final])
+
+                # final is a black and white image where white is estimated road edge
+                # could be used as mask for original image or as the image itself
+                return final2
+
+
+                # use these to show filtering results
+                # cv2.imshow('final', final)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+            
+
+            def _custom(images, random_state, parents, hooks):
+                import cv2
+                import numpy as np
+
+                transformed = []
+
+                kernel_dilate = np.ones((4, 4), np.uint8)
+                kernel_erode = np.ones((6, 6), np.uint8)
+                tophalf = np.zeros((50, 160, 3))
+
+                for img in images:
+                    if False:
+                        gray = iaa.Grayscale(alpha=1.0)
+                        img_gray = gray.augment_image(img)
+                        img = img_gray[50:]
+
+                        equalizeHist = iaa.HistogramEqualization()
+                        equ = equalizeHist.augment_image(img)
+
+                        # blur
+                        blur = iaa.GaussianBlur(sigma=(3, 3))
+                        img_blur = blur.augment_image(equ)
+
+                        # edgeblur
+                        canny = iaa.Canny(hysteresis_thresholds=(100,200), colorizer=iaa.RandomColorsBinaryImageColorizer(color_true=255, color_false=0))
+                        edges_blur = canny.augment_image(img_blur)
+
+
+                        #second contrast image
+                        clahe = iaa.CLAHE(clip_limit=2, tile_grid_size_px=(8,8))
+                        cl1 = clahe.augment_image(img)
+                        edges_cl1 = canny.augment_image(cl1)
+
+
+                        # where contrast mostly agree is the road
+                        edges_and = cv2.bitwise_and(edges_cl1, edges_blur)
+
+                        # dilate and erode to eliminate smaller fragments that are likely not road
+                        img_dilate_1 = cv2.dilate(edges_and, kernel_dilate, iterations=1)
+                        img_erode = cv2.erode(img_dilate_1, kernel_erode, iterations=1)
+                        img_dilate_2 = cv2.dilate(img_erode, kernel_dilate, iterations=1)
+
+
+                        # put in top of image as all zeros
+                        final = np.vstack((tophalf, edges_and))
+
+
+                        # Use this for Justin's Code
+                        # img = _edge_detection(img)
+                        
+                        transformed.append(final)
+                    else:
+                        transformed.append(_edge_detection(img))
+                
+                return transformed
+
+            def _transform_keypoints(keypoints_on_images, random_state, parents, hooks):
+                return keypoints_on_images
+
+            augmentation = iaa.Lambda(func_images=_custom, func_keypoints=_transform_keypoints)
+            return augmentation
+    
 
     class ImageAugmentation:
         def __init__(self, cfg, key):
@@ -111,6 +242,10 @@ try:
                             upper_right=config.ROI_TRAPEZE_UR,
                             min_y=config.ROI_TRAPEZE_MIN_Y,
                             max_y=config.ROI_TRAPEZE_MAX_Y)
+
+            elif aug_type == 'SEGMENTATION':
+                logger.info(f'Custom Augmentation {aug_type}')
+                return Augmentations.segmentation()
 
             elif aug_type == 'MULTIPLY':
                 interval = getattr(config, 'AUG_MULTIPLY_RANGE', (0.5, 1.5))
