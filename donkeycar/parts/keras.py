@@ -795,31 +795,28 @@ class KerasSensors(KerasPilot):
         super().__init__(interpreter, input_shape)
 
     def create_model(self):
-        return default_n_linear(self.num_outputs, self.input_shape)
-
-    # def create_model(self):
-    #     drop = 0.2
-    #     img_in = Input(shape=self.input_shape, name='img_in')
-    #     x = core_cnn_layers(img_in, drop)
-    #     x = Dense(100, activation='relu', name='dense_1')(x)
-    #     x = Dropout(drop)(x)
-    #     x = Dense(50, activation='relu', name='dense_2')(x)
-    #     x = Dropout(drop)(x)
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+        x = core_cnn_layers(img_in, drop)
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
         
-    #     z = concatenate([x])
-    #     # here we add two more dense layers
-    #     z = Dense(50, activation='relu', name='dense_3')(z)
-    #     z = Dropout(drop)(z)
-    #     z = Dense(50, activation='relu', name='dense_4')(z)
-    #     z = Dropout(drop)(z)
-    #     # two outputs for angle and throttle
-    #     outputs = [
-    #         Dense(1, activation='linear', name='n_outputs' + str(i))(z)
-    #         for i in range(2)]
+        z = concatenate([x])
+        # here we add two more dense layers
+        z = Dense(50, activation='relu', name='dense_3')(z)
+        z = Dropout(drop)(z)
+        z = Dense(50, activation='relu', name='dense_4')(z)
+        z = Dropout(drop)(z)
+        # two outputs for angle and throttle
+        outputs = [
+            Dense(1, activation='linear', name='n_outputs' + str(i))(z)
+            for i in range(2)]
 
-    #     # the model needs to specify the additional input here
-    #     model = Model(inputs=[img_in], outputs=outputs)
-    #     return model
+        # the model needs to specify the additional input here
+        model = Model(inputs=[img_in], outputs=outputs, name='gremlin')
+        return model
 
     def compile(self):
         self.interpreter.compile(optimizer=self.optimizer, loss='mse')
