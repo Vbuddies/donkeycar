@@ -780,7 +780,7 @@ class KerasLatent(KerasPilot):
         return steering[0][0], throttle[0][0]
 
 
-class KerasSensors(KerasPilot):
+class KerasGremlin(KerasPilot):
     """
     The KerasLinear pilot uses one neuron to output a continuous value via
     the Keras Dense layer with linear activation. One each for steering and
