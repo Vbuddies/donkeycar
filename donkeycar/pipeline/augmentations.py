@@ -128,7 +128,65 @@ try:
 
                 return final2
 
-            
+            def _edge_prediction(frame):
+                 # pre defined tools that we don't want to write over every time this runs
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                kernel_dilate = np.ones((3,3), np.uint8)
+                tophalf = np.zeros((50, 160))
+
+                # load image
+                img_arr = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # read in as greyscale
+                img_arr = img_arr[50:]  # cut off top half of picture, eliminates background destractions, smaller image size to improve performance
+
+                # use clahe to contrast image to better detect edges with canny
+                cl1 = clahe.apply(img_arr)
+                edges_cl1 = cv2.Canny(cl1, 100, 200)
+
+                # dilate to fill in lines
+                img_dilate_1 = cv2.dilate(edges_cl1, kernel_dilate, iterations=1)
+                
+                # identify connected components
+                analysis = cv2.connectedComponentsWithStats(img_dilate_1, 8, cv2.CV_32S)
+                (totalLabels, label_ids, values, centroid) = analysis
+
+                output = np.zeros_like(img_dilate_1)
+                for i in range(1, totalLabels):
+                    area = values[i, cv2.CC_STAT_HEIGHT] * values[i, cv2.CC_STAT_WIDTH]
+                    # area = values[i, cv2.CC_STAT_AREA]
+                    componentMask = (label_ids == i).astype("uint8") * 255
+
+                    if area > 1000:
+                        # use bounding box to project perfect lines
+                        x, y, w, h = cv2.boundingRect(componentMask)
+
+                        # identify specific component
+                        comp = componentMask[y:y+h, x:x+w]
+
+                        # corner to corner lines only
+                        # find out which pair has more pixels on
+                        # draw line from corner to corner
+
+                        # can we identify the corner with no pixels and use that info to draw the line
+                        # check in for loop use mod to know where in loop no pixels
+                        # order of corners is tl, tr, br, bl
+                        corners = (comp[:10, :10], comp[:10, -10:], comp[-10:, -10:], comp[-10:, :10])
+                        for r in range(4):
+                            # if there are no pixels in the corner
+                            if np.sum(corners[r]) == 0:
+                                # draw line on opposite pair
+                                if r % 2 == 0:
+                                    # on even draw line bl to tr
+                                    cv2.line(output, (x+w, y), (x, y+h), 255, 5)
+                                else:
+                                    cv2.line(output, (x, y), (x+w, y+h), 255, 5)
+                                break
+
+                # put in top of image as all zeros
+                final = np.vstack((tophalf, output))
+
+                final2 = cv2.merge([final, final, final])
+
+                return final2
 
             def _custom(images, random_state, parents, hooks):
                 transformed = []
