@@ -77,17 +77,14 @@ try:
             return augmentation
         
         @classmethod
-        def segmentation(cls):
+        def segmentation(cls, predict):
             """Image Augmentation to enact road segmentation"""
 
 
             def _edge_detection(frame):
                 '''want to identify road boundaries'''
-
                 import numpy as np
                 import cv2
-                from skimage.segmentation import slic
-                import pdb
 
                 # pre defined tools that we don't want to write over every time this runs
                 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -129,7 +126,7 @@ try:
                 return final2
 
             def _edge_prediction(frame):
-                 # pre defined tools that we don't want to write over every time this runs
+                 # pre defined tools 
                 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
                 kernel_dilate = np.ones((3,3), np.uint8)
                 tophalf = np.zeros((50, 160))
@@ -192,7 +189,12 @@ try:
                 transformed = []
 
                 for img in images:
-                    transformed.append(_edge_detection(img))
+
+                    if predict:
+                        transformed.append(_edge_prediction(img))
+                    else:
+                        transformed.append(_edge_detection(img))
+                    
                 
                 return transformed
 
@@ -241,7 +243,11 @@ try:
 
             elif aug_type == 'SEGMENTATION':
                 logger.info(f'Custom Augmentation {aug_type}')
-                return Augmentations.segmentation()
+                return Augmentations.segmentation(False)
+
+            elif aug_type == 'PREDICTION':
+                logger.info(f'Custom Augmentation {aug_type}')
+                return Augmentations.segmentation(True)
 
             elif aug_type == 'MULTIPLY':
                 interval = getattr(config, 'AUG_MULTIPLY_RANGE', (0.5, 1.5))
