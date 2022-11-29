@@ -782,9 +782,7 @@ class KerasLatent(KerasPilot):
 
 class KerasGremlin(KerasPilot):
     """
-    The KerasLinear pilot uses one neuron to output a continuous value via
-    the Keras Dense layer with linear activation. One each for steering and
-    throttle. The output is not bounded.
+    The KerasGremlin pilot is the custom model designed by Chase, Justin, & Nick.
     """
 
     def __init__(self,
@@ -810,9 +808,10 @@ class KerasGremlin(KerasPilot):
         z = Dense(50, activation='relu', name='dense_4')(z)
         z = Dropout(drop)(z)
         # two outputs for angle and throttle
-        outputs = [
-            Dense(1, activation='linear', name='n_outputs' + str(i))(z)
-            for i in range(2)]
+        outputs = []
+        for i in range(self.num_outputs):
+            outputs.append(
+                Dense(1, activation='linear', name='n_outputs' + str(i))(z))
 
         # the model needs to specify the additional input here
         model = Model(inputs=[img_in], outputs=outputs, name='gremlin')
