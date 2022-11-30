@@ -77,11 +77,52 @@ try:
             return augmentation
         
         @classmethod
-        def segmentation(cls, predict):
+        def segmentation(cls, type):
             """Image Augmentation to enact road segmentation"""
 
-
             def _edge_detection(frame):
+                # pre defined tools
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                kernel_dilate = np.ones((4,4), np.uint8)
+                kernel_erode = np.ones((6,6), np.uint8)
+                tophalf = np.zeros((50, 160))
+
+                # load image
+                img_arr = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # read in as greyscale
+                img_arr = img_arr[50:]  # cut off top half of picture, eliminates background destractions, smaller image size to improve performance
+
+                #### strategy ####
+                # want to use edge detection to find lines
+                # use contrasting to better highlight lines
+                # bitwise and 2 different methods of contrasting to find road lines
+                # dilate and erode edges to create mask for original image
+                # stack 0s on top of half image to create full image again
+
+                # first contrast image usually does better with lighter images
+                equ = cv2.equalizeHist(img_arr)
+                img_arr_blur = cv2.blur(equ, (3, 3))
+                edges_blur = cv2.Canny(img_arr_blur, 100, 200)
+
+                # second contrast image usually does better with darker images
+                cl1 = clahe.apply(img_arr)
+                edges_cl1 = cv2.Canny(cl1, 100, 200)
+
+                # where both contrasts agree is mostly road edge
+                edges_and = cv2.bitwise_and(edges_cl1, edges_blur)
+
+                # dilate and erode to eliminate smaller fragments that are likely not road
+                img_dilate_1 = cv2.dilate(edges_and, kernel_dilate, iterations=1)
+                img_erode = cv2.erode(img_dilate_1, kernel_erode, iterations=1)
+                img_dilate_2 = cv2.dilate(img_erode, kernel_dilate, iterations=1)
+
+                # put in top of image as all zeros
+                final = np.vstack((tophalf, img_dilate_2))
+
+                final2 = cv2.merge([final, final, final])
+                return final2
+
+
+            def _edge_detection_cl1(frame):
                 '''want to identify road boundaries'''
                 import numpy as np
                 import cv2
@@ -190,10 +231,12 @@ try:
 
                 for img in images:
 
-                    if predict:
-                        transformed.append(_edge_prediction(img))
-                    else:
+                    if type == 0:
                         transformed.append(_edge_detection(img))
+                    elif type == 1:
+                        transformed.append(_edge_detection_cl1(img))
+                    else:
+                        transformed.append(_edge_prediction(img))
                     
                 
                 return transformed
@@ -243,11 +286,15 @@ try:
 
             elif aug_type == 'SEGMENTATION':
                 logger.info(f'Custom Augmentation {aug_type}')
-                return Augmentations.segmentation(False)
+                return Augmentations.segmentation(0)
+            
+            elif aug_type == 'CLAHEMASK':
+                logger.info(f'Custom Augmentation {aug_type}')
+                return Augmentations.segmentation(1)
 
             elif aug_type == 'PREDICTION':
                 logger.info(f'Custom Augmentation {aug_type}')
-                return Augmentations.segmentation(True)
+                return Augmentations.segmentation(2)
 
             elif aug_type == 'MULTIPLY':
                 interval = getattr(config, 'AUG_MULTIPLY_RANGE', (0.5, 1.5))
