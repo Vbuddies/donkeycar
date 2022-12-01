@@ -226,6 +226,23 @@ try:
 
                 return final2
 
+			def _black_detection(frame):
+				tophalf = np.zeros((50, 160))
+
+				# load image
+                img_arr = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # read in as greyscale
+                img_arr = img_arr[50:]  # cut off top half of picture, eliminates background destractions, smaller image size to improve performance
+
+				average = np.average(img_arr)
+				lines = img_arr < average - 100
+
+				# put in top of image as all zeros
+                final = np.vstack((tophalf, lines))
+
+                final2 = cv2.merge([final, final, final])
+
+                return final2
+
             def _custom(images, random_state, parents, hooks):
                 transformed = []
 
@@ -235,8 +252,10 @@ try:
                         transformed.append(_edge_detection(img))
                     elif type == 1:
                         transformed.append(_edge_detection_cl1(img))
-                    else:
+                    elif type == 2:
                         transformed.append(_edge_prediction(img))
+					else:
+						transformed.append(_black_detection(img))
                     
                 
                 return transformed
@@ -295,6 +314,10 @@ try:
             elif aug_type == 'PREDICTION':
                 logger.info(f'Custom Augmentation {aug_type}')
                 return Augmentations.segmentation(2)
+
+			elif aug_type == 'BLACK':
+				logger.inof(f'Custom Augmentation {aug_type}')
+				return Augmentations.segmentation(3)
 
             elif aug_type == 'MULTIPLY':
                 interval = getattr(config, 'AUG_MULTIPLY_RANGE', (0.5, 1.5))
