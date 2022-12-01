@@ -316,7 +316,7 @@ try:
                 return Augmentations.segmentation(2)
 
             elif aug_type == 'BLACK':
-                logger.inof(f'Custom Augmentation {aug_type}')
+                logger.info(f'Custom Augmentation {aug_type}')
                 return Augmentations.segmentation(3)
 
             elif aug_type == 'MULTIPLY':
