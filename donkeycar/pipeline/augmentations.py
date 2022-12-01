@@ -235,6 +235,7 @@ try:
 
                 average = np.average(img_arr)
                 lines = img_arr < average - 100
+                lines = lines * 255
 
                 # put in top of image as all zeros
                 final = np.vstack((tophalf, lines))
