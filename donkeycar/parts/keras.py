@@ -805,10 +805,10 @@ class KerasGremlin(KerasPilot):
         
         z = concatenate([x])
         # here we add two more dense layers
-        z = Dense(50, activation='relu', name='dense_4')(z)
-        z = Dropout(drop)(z)
-        z = Dense(50, activation='relu', name='dense_5')(z)
-        z = Dropout(drop)(z)
+        # z = Dense(50, activation='relu', name='dense_4')(z)
+        # z = Dropout(drop)(z)
+        # z = Dense(50, activation='relu', name='dense_5')(z)
+        # z = Dropout(drop)(z)
         # two outputs for angle and throttle
         outputs = []
         for i in range(self.num_outputs):
