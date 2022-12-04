@@ -24,15 +24,15 @@ from donkeycar.parts.interpreter import Interpreter, KerasInterpreter
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.layers import Input, Dense
-from tensorflow.keras.layers import Convolution2D, MaxPooling2D, \
+from keras.layers import Input, Dense
+from keras.layers import Convolution2D, MaxPooling2D, \
     BatchNormalization
-from tensorflow.keras.layers import Activation, Dropout, Flatten
-from tensorflow.keras.layers import LSTM
-from tensorflow.keras.layers import TimeDistributed as TD
-from tensorflow.keras.layers import Conv3D, MaxPooling3D, Conv2DTranspose
-from tensorflow.keras.backend import concatenate
-from tensorflow.keras.models import Model
+from keras.layers import Activation, Dropout, Flatten
+from keras.layers import LSTM
+from keras.layers import TimeDistributed as TD
+from keras.layers import Conv3D, MaxPooling3D, Conv2DTranspose
+from keras.backend import concatenate
+from keras.models import Model
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 ONE_BYTE_SCALE = 1.0 / 255.0
@@ -886,6 +886,33 @@ def core_cnn_layers(img_in, drop, l4_stride=1):
     x = Flatten(name='flattened')(x)
     return x
 
+def gremlin_cnn_layers(img_in, drop, l4_stride=1):
+    """
+    Returns the core CNN layers that are shared among the different models,
+    like linear, imu, behavioural
+
+    :param img_in:          input layer of network
+    :param drop:            dropout rate
+    :param l4_stride:       4-th layer stride, default 1
+    :return:                stack of CNN layers
+    """
+    x = img_in
+    # x = conv2d(24, 5, 2, 1)(x)
+    # x = Dropout(drop)(x)
+    x = conv2d(32, 5, 2, 2)(x)
+    x = Dropout(drop)(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = conv2d(64, 5, 2, 3)(x)
+    x = Dropout(drop)(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = conv2d(64, 3, l4_stride, 4)(x)
+    x = Dropout(drop)(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = conv2d(64, 3, 1, 5)(x)
+    x = Dropout(drop)(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Flatten(name='flattened')(x)
+    return x
 
 def default_n_linear(num_outputs, input_shape=(120, 160, 3)):
     drop = 0.2
